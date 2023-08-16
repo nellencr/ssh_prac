@@ -1,0 +1,45 @@
+const express = require('express');
+const cors = require('cors');
+const bodyParser = require('body-parser');
+
+const app = express();
+const PORT = 3001;
+
+app.use(cors());
+app.use(bodyParser.json());
+
+let persons = [
+  { id: 1, name: 'John', number: '123456' },
+  { id: 2, name: 'Alice', number: '789012' },
+  { id: 3, name: 'Bob', number: '345678' }
+];
+
+app.get('/api/persons', (req, res) => {
+  res.json(persons);
+});
+
+app.post('/api/persons', (req, res) => {
+  const newPerson = req.body;
+  newPerson.id = persons.length + 1;
+  persons.push(newPerson);
+  res.json(newPerson);
+});
+
+app.put('/api/persons/:id', (req, res) => {
+  const id = Number(req.params.id);
+  const updatedPerson = req.body;
+
+  persons = persons.map(person => (person.id === id ? { ...person, ...updatedPerson } : person));
+
+  res.json(updatedPerson);
+});
+
+app.delete('/api/persons/:id', (req, res) => {
+  const id = Number(req.params.id);
+  persons = persons.filter(person => person.id !== id);
+  res.status(204).end();
+});
+
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
