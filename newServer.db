@@ -1,0 +1,107 @@
+const express = require('express');
+const cors = require('cors');
+const mongoose = require('mongoose');
+
+const app = express();
+const PORT = process.env.PORT || 3001;
+const MONGODB_URI = "mongodb+srv://mpalikomane:CCk1lLEklZtCDctX@cluster0.nwpkswm.mongodb.net/phonebook?retryWrites=true&w=majority";
+
+app.use(cors());
+app.use(express.json());
+
+mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => {
+    console.log('Connected to MongoDB');
+  })
+  .catch(error => {
+    console.error('Error connecting to MongoDB:', error);
+  });
+
+const personSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true,
+    minlength: 3, // Minimum length of 3 characters
+  },
+  number: String,
+});
+
+const Person = mongoose.model('Person', personSchema);
+
+app.get('/api/persons', (req, res) => {
+  Person.find({}).then(persons => {
+    res.json(persons);
+  });
+});
+
+app.post('/api/persons', async (req, res) => {
+  const newPerson = req.body;
+
+  // Check if a person with the same name already exists
+  const existingPerson = await Person.findOne({ name: newPerson.name });
+
+  if (existingPerson) {
+    return res.status(400).json({ error: 'Person with the same name already exists' });
+  }
+
+  const person = new Person({
+    name: newPerson.name,
+    number: newPerson.number,
+  });
+
+  try {
+        // Validate the length of the name
+    if (person.name.length < 3) {
+      return res.status(400).json({ error: 'Name must be at least three characters long' });
+    }
+
+
+    const savedPerson = await person.save();
+    res.json(savedPerson);
+  } catch (error) {
+    console.error('Error saving person:', error);
+    res.status(500).json({ error: 'Error saving person' });
+  }
+});
+
+
+app.put('/api/persons/:_id', (req, res, next) => {
+  const id = req.params._id; // Use _id here
+  const updatedPerson = {
+    number: req.body.number,
+  };
+
+  Person.findByIdAndUpdate(id, updatedPerson, { new: true })
+    .then(updated => {
+      if (updated) {
+        res.json(updated);
+      } else {
+        res.status(404).end();
+      }
+    })
+    .catch(error => next(error));
+});
+
+
+app.delete('/api/persons/:_id', (req, res) => {
+  const id = req.params._id;
+
+  Person.findByIdAndRemove(id).then(() => {
+    res.status(204).end();
+  });
+});
+
+app.get('/info', (req, res) => {
+  Person.find({}).then(persons => {
+    const info = `
+      <p>Phonebook has info for ${persons.length} people</p>
+      <p>${new Date()}</p>
+    `;
+    res.send(info);
+  });
+});
+
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
+
